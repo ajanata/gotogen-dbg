@@ -1,13 +1,16 @@
 package main
 
 import (
+	"image/color"
 	"math/rand"
 	"os"
 
+	font "github.com/ajanata/oled_font"
+	"github.com/ajanata/textbuf"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 
-	"gotogen-dbg/pixbufmatrix"
+	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
 )
 
 const (
@@ -46,15 +49,23 @@ func main() {
 		faceWindow.Add(faceMatrix.Widget())
 		faceMatrix.Show()
 
-		for x := uint(0); x < faceWidth; x++ {
-			for y := uint(0); y < faceHeight; y++ {
-				faceMatrix.SetPixel(x, y, uint8(x*2), uint8(y*8), 0)
+		for x := int16(0); x < faceWidth; x++ {
+			for y := int16(0); y < faceHeight; y++ {
+				faceMatrix.SetPixel(x, y, color.RGBA{uint8(x * 2), uint8(y * 8), 0, 0})
 			}
 		}
 
-		faceMatrix.SetPixel(0, 0, 0xff, 0, 0)
-		faceMatrix.SetPixel(1, 0, 0, 0xff, 0)
-		faceMatrix.SetPixel(2, 0, 0, 0, 0xff)
+		faceMatrix.SetPixel(0, 0, color.RGBA{0xff, 0, 0, 0})
+		faceMatrix.SetPixel(1, 0, color.RGBA{0, 0xff, 0, 0})
+		faceMatrix.SetPixel(2, 0, color.RGBA{0, 0, 0xff, 0})
+
+		font.PixelOff = color.RGBA{0, 0, 0, 255}
+		font.PixelOn = color.RGBA{255, 255, 255, 255}
+		buf, err := textbuf.New(faceMatrix, textbuf.FontSize7x10)
+		if err != nil {
+			panic(err)
+		}
+		buf.Println("hello, world!")
 
 		// menu screen
 		menuWindow, err := gtk.ApplicationWindowNew(app)
@@ -76,9 +87,9 @@ func main() {
 		menuWindow.Add(menuMatrix.Widget())
 		menuMatrix.Show()
 
-		for x := uint(0); x < menuWidth; x++ {
-			for y := uint(0); y < menuHeight; y++ {
-				menuMatrix.SetPixel(x, y, uint8(x*2), uint8(y*4), 0)
+		for x := int16(0); x < menuWidth; x++ {
+			for y := int16(0); y < menuHeight; y++ {
+				menuMatrix.SetPixel(x, y, color.RGBA{uint8(x * 2), uint8(y * 4), 0, 0})
 			}
 		}
 
@@ -140,9 +151,9 @@ func main() {
 		inputWindow.ShowAll()
 
 		buttonEnter.Connect("clicked", func() {
-			for x := uint(0); x < menuWidth; x++ {
-				for y := uint(0); y < menuHeight; y++ {
-					menuMatrix.SetPixel(x, y, uint8(rand.Int()), uint8(rand.Int()), uint8(rand.Int()))
+			for x := int16(0); x < menuWidth; x++ {
+				for y := int16(0); y < menuHeight; y++ {
+					menuMatrix.SetPixel(x, y, color.RGBA{uint8(rand.Int()), uint8(rand.Int()), uint8(rand.Int()), 0})
 				}
 			}
 			menuMatrix.QueueDraw()

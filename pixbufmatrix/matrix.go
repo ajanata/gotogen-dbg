@@ -2,20 +2,24 @@ package pixbufmatrix
 
 import (
 	"fmt"
+	"image/color"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
+	"tinygo.org/x/drivers"
 )
 
 type Matrix struct {
-	width     uint
-	height    uint
-	thickness uint8
+	width     int16
+	height    int16
+	thickness int16
 	buf       *gdk.Pixbuf
 	img       *gtk.Image
 }
 
-func New(width, height uint, thickness uint8) (*Matrix, error) {
+var _ drivers.Displayer = (*Matrix)(nil)
+
+func New(width, height int16, thickness int16) (*Matrix, error) {
 	buf, err := gdk.PixbufNew(gdk.COLORSPACE_RGB, false, 8, int(width)*(int(thickness)+1), int(height)*(int(thickness)+1))
 	if err != nil {
 		return nil, fmt.Errorf("creating buf: %w", err)
@@ -54,20 +58,31 @@ func (m *Matrix) QueueDraw() {
 	m.img.QueueDraw()
 }
 
-func (m *Matrix) SetPixel(x, y uint, r, g, b uint8) {
+// implementation of drivers.Displayer
+
+func (m *Matrix) Size() (x, y int16) {
+	return m.width, m.height
+}
+
+func (m *Matrix) SetPixel(x, y int16, c color.RGBA) {
 	pix := m.buf.GetPixels()
 	// number of bytes per row
 	stride := m.buf.GetRowstride()
 	// number of bytes per pixel
-	nChan := uint(m.buf.GetNChannels())
+	nChan := m.buf.GetNChannels()
 
-	for i := uint(0); i < uint(m.thickness); i++ {
-		yOffset := (y*(uint(m.thickness)+1) + i) * uint(stride)
-		for j := uint(0); j < uint(m.thickness); j++ {
-			xOffset := (x*(uint(m.thickness)+1) + j) * nChan
-			pix[yOffset+xOffset] = r
-			pix[yOffset+xOffset+1] = g
-			pix[yOffset+xOffset+2] = b
+	for i := 0; i < int(m.thickness); i++ {
+		yOffset := (int(y)*int(m.thickness+1) + i) * stride
+		for j := 0; j < int(m.thickness); j++ {
+			xOffset := (int(x)*int(m.thickness+1) + j) * nChan
+			pix[yOffset+xOffset] = c.R
+			pix[yOffset+xOffset+1] = c.G
+			pix[yOffset+xOffset+2] = c.B
 		}
 	}
+}
+
+func (m *Matrix) Display() error {
+	m.QueueDraw()
+	return nil
 }
