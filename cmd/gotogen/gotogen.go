@@ -5,10 +5,12 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/ajanata/gotogen"
 	font "github.com/ajanata/oled_font"
 	"github.com/ajanata/textbuf"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"tinygo.org/x/drivers"
 
 	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
 )
@@ -93,34 +95,6 @@ func main() {
 			}
 		}
 
-		//frames := atomic.NewInt32(0)
-		//go func() {
-		//	for range time.Tick(time.Second) {
-		//		fmt.Println(frames.Load())
-		//		frames.Store(0)
-		//	}
-		//}()
-		//
-		//go func() {
-		//	for {
-		//		for x := uint(0); x < menuWidth; x++ {
-		//			for y := uint(0); y < menuHeight; y++ {
-		//				menuMatrix.SetPixel(x, y, uint8(rand.Int()), uint8(rand.Int()), uint8(rand.Int()))
-		//			}
-		//		}
-		//		menuMatrix.QueueDraw()
-		//
-		//		for x := uint(0); x < faceWidth; x++ {
-		//			for y := uint(0); y < faceHeight; y++ {
-		//				faceMatrix.SetPixel(x, y, uint8(rand.Int()), uint8(rand.Int()), uint8(rand.Int()))
-		//			}
-		//		}
-		//		faceMatrix.QueueDraw()
-		//
-		//		frames.Inc()
-		//	}
-		//}()
-
 		// input buttons
 		inputWindow, err := gtk.ApplicationWindowNew(app)
 		if err != nil {
@@ -150,6 +124,81 @@ func main() {
 		inputWindow.Add(inputGrid)
 		inputWindow.ShowAll()
 
+		// f, err := os.Open("Elbrarmemestickerscant.png")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// b := make([]uint16, 64*32)
+		// var w, h int16
+		// png.SetCallback(b, func(data []uint16, x, y, w, h, width, height int16) {
+		// 	w, h = width, height
+		// })
+		// p, err := png.Decode(f)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// // r := p.Bounds()
+		// r := image.Rect(0, 0, int(w), int(h))
+		// for x := r.Min.X; x < r.Max.X; x++ {
+		// 	xx := int16(x - r.Min.X)
+		// 	if xx > 128 {
+		// 		break
+		// 	}
+		// 	for y := r.Min.Y; y < r.Max.Y; y++ {
+		// 		yy := int16(y - r.Min.Y)
+		// 		if yy > 32 {
+		// 			break
+		// 		}
+		// 		r, g, b, a := p.At(x, y).RGBA()
+		// 		faceMatrix.SetPixel(xx, yy, color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+		// 	}
+		// }
+		// faceMatrix.Display()
+		// f, err := os.Open("Untitled.png")
+		// 24-bit non-transparent
+		// f, err := os.Open("Elbrarmemestickerscant3.png")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// // row, col
+		// b := make([][]uint16, 32)
+		// for i := 0; i < 32; i++ {
+		// 	b[i] = make([]uint16, 64)
+		// }
+		// var bb [64]uint16
+		// w, h := uint16(64), uint16(32)
+		// png.SetCallback(bb[:], func(data []uint16, x, y, w, h, width, height int16) {
+		// 	// w, h = width, height
+		// 	// b[x] = make([]uint16, 32)
+		// 	// b[y] = data
+		// 	copy(b[y], data[:64])
+		// 	// b[x][y] = bb[0]
+		// })
+		// _, err = png.Decode(f)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// // r := p.Bounds()
+		// r := image.Rect(0, 0, int(w), int(h))
+		// for y := r.Min.Y; y < r.Max.Y; y++ {
+		// 	yy := int16(y - r.Min.Y)
+		// 	if yy > 32 {
+		// 		break
+		// 	}
+		// 	for x := r.Min.X; x < r.Max.X; x++ {
+		// 		xx := int16(x - r.Min.X)
+		// 		if xx > 64 {
+		// 			break
+		// 		}
+		// 		// re := ((b[yy][xx]&0b1111_1000_0000_0000)*255 + 15) / 31
+		// 		// gr := ((b[yy][xx]&0b0000_0111_1110_0000)*255 + 31) / 63
+		// 		// bl := ((b[yy][xx]&0b0000_0000_0001_1111)*255 + 15) / 31
+		// 		// faceMatrix.SetPixel(xx, yy, color.RGBA{uint8(re), uint8(gr), uint8(bl), 255})
+		// 		faceMatrix.SetPixel(xx, yy, rgb565ToRGBA(b[yy][xx]))
+		// 	}
+		// }
+		// faceMatrix.Display()
+
 		buttonEnter.Connect("clicked", func() {
 			for x := int16(0); x < menuWidth; x++ {
 				for y := int16(0); y < menuHeight; y++ {
@@ -158,6 +207,17 @@ func main() {
 			}
 			menuMatrix.QueueDraw()
 		})
+
+		g, err := gotogen.New(60, nil, menuMatrix, nil, func() (faceDisplay drivers.Displayer, menuInput gotogen.MenuInput, boopSensor gotogen.BoopSensor, err error) {
+			return faceMatrix, nil, nil, nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		err = g.Init()
+		if err != nil {
+			panic(err)
+		}
 	})
 	app.Run(os.Args)
 }
