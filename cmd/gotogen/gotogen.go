@@ -2,7 +2,6 @@ package main
 
 import (
 	"image/color"
-	"math/rand"
 	"os"
 
 	"github.com/ajanata/gotogen"
@@ -10,9 +9,9 @@ import (
 	"github.com/ajanata/textbuf"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
-	"tinygo.org/x/drivers"
 
 	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
+	"github.com/ajanata/gotogen-simulator/simulator"
 )
 
 const (
@@ -57,10 +56,6 @@ func main() {
 			}
 		}
 
-		faceMatrix.SetPixel(0, 0, color.RGBA{0xff, 0, 0, 0})
-		faceMatrix.SetPixel(1, 0, color.RGBA{0, 0xff, 0, 0})
-		faceMatrix.SetPixel(2, 0, color.RGBA{0, 0, 0xff, 0})
-
 		font.PixelOff = color.RGBA{0, 0, 0, 255}
 		font.PixelOn = color.RGBA{255, 255, 255, 255}
 		buf, err := textbuf.New(faceMatrix, textbuf.FontSize7x10)
@@ -89,12 +84,6 @@ func main() {
 		menuWindow.Add(menuMatrix.Widget())
 		menuMatrix.Show()
 
-		for x := int16(0); x < menuWidth; x++ {
-			for y := int16(0); y < menuHeight; y++ {
-				menuMatrix.SetPixel(x, y, color.RGBA{uint8(x * 2), uint8(y * 4), 0, 0})
-			}
-		}
-
 		// input buttons
 		inputWindow, err := gtk.ApplicationWindowNew(app)
 		if err != nil {
@@ -112,105 +101,38 @@ func main() {
 		buttonBack := mustMakeButton("Back")
 		buttonUp := mustMakeButton("Up")
 		buttonDown := mustMakeButton("Down")
-		buttonLeft := mustMakeButton("Left")
-		buttonRight := mustMakeButton("Right")
-		buttonEnter := mustMakeButton("Enter")
+		buttonMenu := mustMakeButton("Menu")
+		buttonReset := mustMakeButton("Reset")
 		inputGrid.Attach(buttonUp, 1, 0, 1, 1)
-		inputGrid.Attach(buttonDown, 1, 2, 1, 1)
-		inputGrid.Attach(buttonLeft, 0, 1, 1, 1)
-		inputGrid.Attach(buttonRight, 2, 1, 1, 1)
+		inputGrid.Attach(buttonDown, 1, 1, 1, 1)
+		inputGrid.Attach(buttonReset, 0, 1, 1, 1)
 		inputGrid.Attach(buttonBack, 0, 0, 1, 1)
-		inputGrid.Attach(buttonEnter, 1, 1, 1, 1)
+		inputGrid.Attach(buttonMenu, 2, 1, 1, 1)
 		inputWindow.Add(inputGrid)
 		inputWindow.ShowAll()
 
-		// f, err := os.Open("Elbrarmemestickerscant.png")
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// b := make([]uint16, 64*32)
-		// var w, h int16
-		// png.SetCallback(b, func(data []uint16, x, y, w, h, width, height int16) {
-		// 	w, h = width, height
-		// })
-		// p, err := png.Decode(f)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// // r := p.Bounds()
-		// r := image.Rect(0, 0, int(w), int(h))
-		// for x := r.Min.X; x < r.Max.X; x++ {
-		// 	xx := int16(x - r.Min.X)
-		// 	if xx > 128 {
-		// 		break
-		// 	}
-		// 	for y := r.Min.Y; y < r.Max.Y; y++ {
-		// 		yy := int16(y - r.Min.Y)
-		// 		if yy > 32 {
-		// 			break
-		// 		}
-		// 		r, g, b, a := p.At(x, y).RGBA()
-		// 		faceMatrix.SetPixel(xx, yy, color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
-		// 	}
-		// }
-		// faceMatrix.Display()
-		// f, err := os.Open("Untitled.png")
-		// 24-bit non-transparent
-		// f, err := os.Open("Elbrarmemestickerscant3.png")
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// // row, col
-		// b := make([][]uint16, 32)
-		// for i := 0; i < 32; i++ {
-		// 	b[i] = make([]uint16, 64)
-		// }
-		// var bb [64]uint16
-		// w, h := uint16(64), uint16(32)
-		// png.SetCallback(bb[:], func(data []uint16, x, y, w, h, width, height int16) {
-		// 	// w, h = width, height
-		// 	// b[x] = make([]uint16, 32)
-		// 	// b[y] = data
-		// 	copy(b[y], data[:64])
-		// 	// b[x][y] = bb[0]
-		// })
-		// _, err = png.Decode(f)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// // r := p.Bounds()
-		// r := image.Rect(0, 0, int(w), int(h))
-		// for y := r.Min.Y; y < r.Max.Y; y++ {
-		// 	yy := int16(y - r.Min.Y)
-		// 	if yy > 32 {
-		// 		break
-		// 	}
-		// 	for x := r.Min.X; x < r.Max.X; x++ {
-		// 		xx := int16(x - r.Min.X)
-		// 		if xx > 64 {
-		// 			break
-		// 		}
-		// 		// re := ((b[yy][xx]&0b1111_1000_0000_0000)*255 + 15) / 31
-		// 		// gr := ((b[yy][xx]&0b0000_0111_1110_0000)*255 + 31) / 63
-		// 		// bl := ((b[yy][xx]&0b0000_0000_0001_1111)*255 + 15) / 31
-		// 		// faceMatrix.SetPixel(xx, yy, color.RGBA{uint8(re), uint8(gr), uint8(bl), 255})
-		// 		faceMatrix.SetPixel(xx, yy, rgb565ToRGBA(b[yy][xx]))
-		// 	}
-		// }
-		// faceMatrix.Display()
+		driver := &simulator.Gotogen{
+			Face: faceMatrix,
+			Menu: menuMatrix,
+		}
 
-		buttonEnter.Connect("clicked", func() {
-			for x := int16(0); x < menuWidth; x++ {
-				for y := int16(0); y < menuHeight; y++ {
-					menuMatrix.SetPixel(x, y, color.RGBA{uint8(rand.Int()), uint8(rand.Int()), uint8(rand.Int()), 0})
-				}
-			}
-			menuMatrix.QueueDraw()
+		buttonBack.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonBack)
+		})
+		buttonUp.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonUp)
+		})
+		buttonDown.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonDown)
+		})
+		buttonMenu.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonMenu)
+		})
+		buttonReset.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonReset)
 		})
 
-		g, err := gotogen.New(60, nil, menuMatrix, nil, func() (faceDisplay drivers.Displayer, menuInput gotogen.MenuInput, boopSensor gotogen.BoopSensor, err error) {
-			return faceMatrix, nil, nil, nil
-		})
+		g, err := gotogen.New(60, nil, menuMatrix, nil, driver)
 		if err != nil {
 			panic(err)
 		}
@@ -218,6 +140,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		go g.Run()
 	})
 	app.Run(os.Args)
 }
