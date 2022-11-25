@@ -4,11 +4,12 @@ import (
 	"image/color"
 	"os"
 
-	"github.com/ajanata/gotogen"
 	font "github.com/ajanata/oled_font"
 	"github.com/ajanata/textbuf"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+
+	"github.com/ajanata/gotogen"
 
 	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
 	"github.com/ajanata/gotogen-simulator/simulator"
@@ -49,12 +50,6 @@ func main() {
 		}
 		faceWindow.Add(faceMatrix.Widget())
 		faceMatrix.Show()
-
-		for x := int16(0); x < faceWidth; x++ {
-			for y := int16(0); y < faceHeight; y++ {
-				faceMatrix.SetPixel(x, y, color.RGBA{uint8(x * 2), uint8(y * 8), 0, 0})
-			}
-		}
 
 		font.PixelOff = color.RGBA{0, 0, 0, 255}
 		font.PixelOn = color.RGBA{255, 255, 255, 255}
@@ -102,10 +97,10 @@ func main() {
 		buttonUp := mustMakeButton("Up")
 		buttonDown := mustMakeButton("Down")
 		buttonMenu := mustMakeButton("Menu")
-		buttonReset := mustMakeButton("Reset")
+		buttonDefault := mustMakeButton("Default")
 		inputGrid.Attach(buttonUp, 1, 0, 1, 1)
 		inputGrid.Attach(buttonDown, 1, 1, 1, 1)
-		inputGrid.Attach(buttonReset, 0, 1, 1, 1)
+		inputGrid.Attach(buttonDefault, 0, 1, 1, 1)
 		inputGrid.Attach(buttonBack, 0, 0, 1, 1)
 		inputGrid.Attach(buttonMenu, 2, 1, 1, 1)
 		inputWindow.Add(inputGrid)
@@ -128,11 +123,11 @@ func main() {
 		buttonMenu.Connect("clicked", func() {
 			driver.ButtonPress(gotogen.MenuButtonMenu)
 		})
-		buttonReset.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonReset)
+		buttonDefault.Connect("clicked", func() {
+			driver.ButtonPress(gotogen.MenuButtonDefault)
 		})
 
-		g, err := gotogen.New(60, nil, menuMatrix, nil, driver)
+		g, err := gotogen.New(60, menuMatrix, nil, driver)
 		if err != nil {
 			panic(err)
 		}
