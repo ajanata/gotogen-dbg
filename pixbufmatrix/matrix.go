@@ -75,9 +75,13 @@ func (m *Matrix) SetPixel(x, y int16, c color.RGBA) {
 		yOffset := (int(y)*int(m.thickness+1) + i) * stride
 		for j := 0; j < int(m.thickness); j++ {
 			xOffset := (int(x)*int(m.thickness+1) + j) * nChan
-			pix[yOffset+xOffset] = c.R
-			pix[yOffset+xOffset+1] = c.G
-			pix[yOffset+xOffset+2] = c.B
+			offset := yOffset + xOffset
+			if offset > len(pix) || offset < 0 {
+				continue
+			}
+			pix[offset] = c.R
+			pix[offset+1] = c.G
+			pix[offset+2] = c.B
 		}
 	}
 }
@@ -86,3 +90,5 @@ func (m *Matrix) Display() error {
 	m.QueueDraw()
 	return nil
 }
+
+func (*Matrix) CanUpdateNow() bool { return true }

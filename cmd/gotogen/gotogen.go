@@ -79,7 +79,7 @@ func main() {
 		menuWindow.Add(menuMatrix.Widget())
 		menuMatrix.Show()
 
-		// input buttons
+		// input window
 		inputWindow, err := gtk.ApplicationWindowNew(app)
 		if err != nil {
 			panic(err)
@@ -93,16 +93,50 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		// buttons
 		buttonBack := mustMakeButton("Back")
 		buttonUp := mustMakeButton("Up")
 		buttonDown := mustMakeButton("Down")
 		buttonMenu := mustMakeButton("Menu")
-		buttonDefault := mustMakeButton("Default")
+		// buttonDefault := mustMakeButton("Default")
 		inputGrid.Attach(buttonUp, 1, 0, 1, 1)
 		inputGrid.Attach(buttonDown, 1, 1, 1, 1)
-		inputGrid.Attach(buttonDefault, 0, 1, 1, 1)
+		// inputGrid.Attach(buttonDefault, 0, 1, 1, 1)
 		inputGrid.Attach(buttonBack, 0, 0, 1, 1)
-		inputGrid.Attach(buttonMenu, 2, 1, 1, 1)
+		inputGrid.Attach(buttonMenu, 0, 1, 1, 1)
+
+		// accelerometer
+		accX, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
+		if err != nil {
+			panic(err)
+		}
+		accX.SetValue(0)
+		accX.SetTooltipText("Accelerometer X")
+		accY, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
+		if err != nil {
+			panic(err)
+		}
+		accY.SetValue(0)
+		accY.SetTooltipText("Accelerometer Y")
+		accZ, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
+		if err != nil {
+			panic(err)
+		}
+		accZ.SetValue(0)
+		accZ.SetTooltipText("Accelerometer Z")
+		inputGrid.Attach(accX, 0, 2, 2, 1)
+		inputGrid.Attach(accY, 0, 3, 2, 1)
+		inputGrid.Attach(accZ, 0, 4, 2, 1)
+
+		// boop sensor
+		boop, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_VERTICAL, 0, 1, .1)
+		if err != nil {
+			panic(err)
+		}
+		boop.SetTooltipText("Boop sensor")
+		inputGrid.Attach(boop, 2, 0, 1, 2)
+
 		inputWindow.Add(inputGrid)
 		inputWindow.ShowAll()
 
@@ -111,6 +145,7 @@ func main() {
 			Menu: menuMatrix,
 		}
 
+		// action handlers
 		buttonBack.Connect("clicked", func() {
 			driver.ButtonPress(gotogen.MenuButtonBack)
 		})
@@ -123,20 +158,34 @@ func main() {
 		buttonMenu.Connect("clicked", func() {
 			driver.ButtonPress(gotogen.MenuButtonMenu)
 		})
-		buttonDefault.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonDefault)
+		// buttonDefault.Connect("clicked", func() {
+		// 	driver.ButtonPress(gotogen.MenuButtonDefault)
+		// })
+		accX.Connect("value-changed", func() {
+			driver.UpdateAccelerometerX(accX.GetValue())
+		})
+		accY.Connect("value-changed", func() {
+			driver.UpdateAccelerometerY(accY.GetValue())
+		})
+		accZ.Connect("value-changed", func() {
+			driver.UpdateAccelerometerZ(accZ.GetValue())
+		})
+		boop.Connect("value-changed", func() {
+			driver.UpdateBoop(boop.GetValue())
 		})
 
-		g, err := gotogen.New(60, menuMatrix, nil, driver)
-		if err != nil {
-			panic(err)
-		}
-		err = g.Init()
-		if err != nil {
-			panic(err)
-		}
+		go func() {
+			g, err := gotogen.New(60, menuMatrix, nil, driver)
+			if err != nil {
+				panic(err)
+			}
+			err = g.Init()
+			if err != nil {
+				panic(err)
+			}
 
-		go g.Run()
+			g.Run()
+		}()
 	})
 	app.Run(os.Args)
 }
