@@ -137,6 +137,13 @@ func main() {
 		boop.SetTooltipText("Boop sensor")
 		inputGrid.Attach(boop, 2, 0, 1, 2)
 
+		// talking
+		talk, err := gtk.CheckButtonNewWithLabel("Talking")
+		if err != nil {
+			panic(err)
+		}
+		inputGrid.Attach(talk, 2, 2, 1, 1)
+
 		inputWindow.Add(inputGrid)
 		inputWindow.ShowAll()
 
@@ -172,6 +179,9 @@ func main() {
 		})
 		boop.Connect("value-changed", func() {
 			driver.UpdateBoop(boop.GetValue())
+		})
+		talk.Connect("toggled", func() {
+			driver.UpdateTalk(talk.GetActive())
 		})
 
 		go func() {

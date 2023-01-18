@@ -76,9 +76,6 @@ func (m *Matrix) SetPixel(x, y int16, c color.RGBA) {
 		for j := 0; j < int(m.thickness); j++ {
 			xOffset := (int(x)*int(m.thickness+1) + j) * nChan
 			offset := yOffset + xOffset
-			if offset > len(pix) || offset < 0 {
-				continue
-			}
 			pix[offset] = c.R
 			pix[offset+1] = c.G
 			pix[offset+2] = c.B

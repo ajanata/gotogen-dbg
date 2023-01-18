@@ -21,6 +21,7 @@ type Gotogen struct {
 	accY          int32
 	accZ          int32
 	boop          uint8
+	talk          bool
 }
 
 var _ gotogen.Driver = (*Gotogen)(nil)
@@ -71,6 +72,12 @@ func (g *Gotogen) UpdateBoop(v float64) {
 	g.lock.Unlock()
 }
 
+func (g *Gotogen) UpdateTalk(v bool) {
+	g.lock.Lock()
+	g.talk = v
+	g.lock.Unlock()
+}
+
 func (g *Gotogen) MenuItems() []gotogen.Item {
 	return []gotogen.Item{
 		&gotogen.ActionItem{
@@ -90,4 +97,10 @@ func (g *Gotogen) Accelerometer() (int32, int32, int32, gotogen.SensorStatus) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	return g.accX, g.accY, g.accZ, gotogen.SensorStatusAvailable
+}
+
+func (g *Gotogen) Talking() bool {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+	return g.talk
 }
