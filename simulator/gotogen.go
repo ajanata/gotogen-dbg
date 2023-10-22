@@ -104,3 +104,7 @@ func (g *Gotogen) Talking() bool {
 	defer g.lock.Unlock()
 	return g.talk
 }
+
+func (g *Gotogen) StatusLine() string {
+	return ""
+}
