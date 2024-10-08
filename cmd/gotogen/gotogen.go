@@ -2,16 +2,19 @@ package main
 
 import (
 	"image/color"
+	"log"
 	"os"
+	"time"
 
-	font "github.com/ajanata/oled_font"
-	"github.com/ajanata/textbuf"
-	"github.com/gotk3/gotk3/glib"
-	"github.com/gotk3/gotk3/gtk"
-
+	"gioui.org/app"
+	"gioui.org/layout"
+	"gioui.org/op"
+	"gioui.org/widget"
+	"gioui.org/widget/material"
+	"gioui.org/x/outlay"
 	"github.com/ajanata/gotogen"
+	font "github.com/ajanata/oled_font"
 
-	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
 	"github.com/ajanata/gotogen-simulator/simulator"
 )
 
@@ -25,185 +28,232 @@ const (
 	menuThickness = 3
 )
 
+var faceMatrix *simulator.Display
+var menuMatrix *simulator.Display
+
+var driver *simulator.Gotogen
+
+var (
+	btnBack widget.Clickable
+	btnMenu widget.Clickable
+	btnUp   widget.Clickable
+	btnDown widget.Clickable
+
+	slideX    = widget.Float{Value: .5}
+	slideY    = widget.Float{Value: .5}
+	slideZ    = widget.Float{Value: .5}
+	slideBoop widget.Float
+
+	chkTalking widget.Bool
+)
+
 func main() {
-	app, err := gtk.ApplicationNew("at.elbrarc.demo", glib.APPLICATION_FLAGS_NONE)
-	if err != nil {
-		panic(err)
+	font.PixelOff = color.RGBA{A: 255}
+	font.PixelOn = color.RGBA{R: 255, G: 255, B: 255, A: 255}
+
+	faceMatrix = simulator.NewDisplay(faceWidth, faceHeight, faceThickness)
+	menuMatrix = simulator.NewDisplay(menuWidth, menuHeight, menuThickness)
+
+	driver = &simulator.Gotogen{
+		Face: faceMatrix,
+		Menu: menuMatrix,
 	}
 
-	app.Connect("activate", func() {
-		faceWindow, err := gtk.ApplicationWindowNew(app)
-		if err != nil {
-			panic(err)
-		}
-		faceWindow.SetTitle("Gotogen Debug - Face")
-		faceWindow.SetDefaultSize(faceWidth*(faceThickness+1), faceHeight*(faceThickness+1))
-		faceWindow.SetResizable(false)
-		faceWindow.Show()
-		faceWindow.Connect("destroy", func() {
-			os.Exit(0)
-		})
+	driver.UpdateAccelerometerX(float64(2 * slideX.Value))
+	driver.UpdateAccelerometerY(float64(2 * slideY.Value))
+	driver.UpdateAccelerometerZ(float64(2 * slideZ.Value))
 
-		faceMatrix, err := pixbufmatrix.New(faceWidth, faceHeight, faceThickness)
+	go func() {
+		window := new(app.Window)
+		window.Option(app.Title("Gotogen Debug - Face"))
+		window.Option(app.MinSize(faceWidth*(faceThickness+1), faceHeight*(faceThickness+1)))
+		window.Option(app.MaxSize(faceWidth*(faceThickness+1), faceHeight*(faceThickness+1)))
+		err := runFace(window)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		faceWindow.Add(faceMatrix.Widget())
-		faceMatrix.Show()
+		os.Exit(0)
+	}()
 
-		font.PixelOff = color.RGBA{0, 0, 0, 255}
-		font.PixelOn = color.RGBA{255, 255, 255, 255}
-		buf, err := textbuf.New(faceMatrix, textbuf.FontSize7x10)
+	go func() {
+		window := new(app.Window)
+		window.Option(app.Title("Gotogen Debug - Menu"))
+		window.Option(app.MinSize(menuWidth*(menuThickness+1), menuHeight*(menuThickness+1)))
+		window.Option(app.MaxSize(menuWidth*(menuThickness+1), menuHeight*(menuThickness+1)))
+		err := runMenu(window)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		buf.Println("hello, world!")
+		os.Exit(0)
+	}()
 
-		// menu screen
-		menuWindow, err := gtk.ApplicationWindowNew(app)
+	go func() {
+		window := new(app.Window)
+		window.Option(app.Title("Gotogen Debug - Input"))
+		window.Option(app.MinSize(600, 150))
+		window.Option(app.MaxSize(600, 150))
+		err := runInput(window)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		menuWindow.SetTitle("Gotogen Debug - Menu")
-		menuWindow.SetDefaultSize(menuWidth*(menuThickness+1), menuHeight*(menuThickness+1))
-		menuWindow.Show()
-		menuWindow.SetResizable(false)
-		menuWindow.Connect("destroy", func() {
-			os.Exit(0)
-		})
+		os.Exit(0)
+	}()
 
-		menuMatrix, err := pixbufmatrix.New(menuWidth, menuHeight, menuThickness)
+	go func() {
+		g, err := gotogen.New(60, menuMatrix, nil, driver)
 		if err != nil {
 			panic(err)
 		}
-		menuWindow.Add(menuMatrix.Widget())
-		menuMatrix.Show()
-
-		// input window
-		inputWindow, err := gtk.ApplicationWindowNew(app)
-		if err != nil {
-			panic(err)
-		}
-		inputWindow.SetTitle("Gotogen Debug - Input")
-		inputWindow.SetDefaultSize(200, 100)
-		inputWindow.Connect("destroy", func() {
-			os.Exit(0)
-		})
-		inputGrid, err := gtk.GridNew()
+		err = g.Init()
 		if err != nil {
 			panic(err)
 		}
 
-		// buttons
-		buttonBack := mustMakeButton("Back")
-		buttonUp := mustMakeButton("Up")
-		buttonDown := mustMakeButton("Down")
-		buttonMenu := mustMakeButton("Menu")
-		// buttonDefault := mustMakeButton("Default")
-		inputGrid.Attach(buttonUp, 1, 0, 1, 1)
-		inputGrid.Attach(buttonDown, 1, 1, 1, 1)
-		// inputGrid.Attach(buttonDefault, 0, 1, 1, 1)
-		inputGrid.Attach(buttonBack, 0, 0, 1, 1)
-		inputGrid.Attach(buttonMenu, 0, 1, 1, 1)
+		g.Run()
+	}()
 
-		// accelerometer
-		accX, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
-		if err != nil {
-			panic(err)
-		}
-		accX.SetValue(0)
-		accX.SetTooltipText("Accelerometer X")
-		accY, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
-		if err != nil {
-			panic(err)
-		}
-		accY.SetValue(0)
-		accY.SetTooltipText("Accelerometer Y")
-		accZ, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, -1, 1, .01)
-		if err != nil {
-			panic(err)
-		}
-		accZ.SetValue(0)
-		accZ.SetTooltipText("Accelerometer Z")
-		inputGrid.Attach(accX, 0, 2, 2, 1)
-		inputGrid.Attach(accY, 0, 3, 2, 1)
-		inputGrid.Attach(accZ, 0, 4, 2, 1)
-
-		// boop sensor
-		boop, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_VERTICAL, 0, 1, .1)
-		if err != nil {
-			panic(err)
-		}
-		boop.SetTooltipText("Boop sensor")
-		inputGrid.Attach(boop, 2, 0, 1, 2)
-
-		// talking
-		talk, err := gtk.CheckButtonNewWithLabel("Talking")
-		if err != nil {
-			panic(err)
-		}
-		inputGrid.Attach(talk, 2, 2, 1, 1)
-
-		inputWindow.Add(inputGrid)
-		inputWindow.ShowAll()
-
-		driver := &simulator.Gotogen{
-			Face: faceMatrix,
-			Menu: menuMatrix,
-		}
-
-		// action handlers
-		buttonBack.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonBack)
-		})
-		buttonUp.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonUp)
-		})
-		buttonDown.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonDown)
-		})
-		buttonMenu.Connect("clicked", func() {
-			driver.ButtonPress(gotogen.MenuButtonMenu)
-		})
-		// buttonDefault.Connect("clicked", func() {
-		// 	driver.ButtonPress(gotogen.MenuButtonDefault)
-		// })
-		accX.Connect("value-changed", func() {
-			driver.UpdateAccelerometerX(accX.GetValue())
-		})
-		accY.Connect("value-changed", func() {
-			driver.UpdateAccelerometerY(accY.GetValue())
-		})
-		accZ.Connect("value-changed", func() {
-			driver.UpdateAccelerometerZ(accZ.GetValue())
-		})
-		boop.Connect("value-changed", func() {
-			driver.UpdateBoop(boop.GetValue())
-		})
-		talk.Connect("toggled", func() {
-			driver.UpdateTalk(talk.GetActive())
-		})
-
-		go func() {
-			g, err := gotogen.New(60, menuMatrix, nil, driver)
-			if err != nil {
-				panic(err)
-			}
-			err = g.Init()
-			if err != nil {
-				panic(err)
-			}
-
-			g.Run()
-		}()
-	})
-	app.Run(os.Args)
+	app.Main()
 }
 
-func mustMakeButton(label string) *gtk.Button {
-	b, err := gtk.ButtonNewWithLabel(label)
-	if err != nil {
-		panic(err)
+func runFace(window *app.Window) error {
+	var ops op.Ops
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
+			faceMatrix.Render(gtx.Ops)
+
+			gtx.Execute(op.InvalidateCmd{At: time.Now().Add(time.Second / 60)})
+			e.Frame(gtx.Ops)
+		}
 	}
-	return b
+}
+
+func runMenu(window *app.Window) error {
+	var ops op.Ops
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
+			menuMatrix.Render(gtx.Ops)
+
+			gtx.Execute(op.InvalidateCmd{At: time.Now().Add(time.Second / 60)})
+			e.Frame(gtx.Ops)
+		}
+	}
+}
+
+func runInput(window *app.Window) error {
+	theme := material.NewTheme()
+	var ops op.Ops
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
+
+			// handle events
+			if btnBack.Clicked(gtx) {
+				driver.ButtonPress(gotogen.MenuButtonBack)
+			}
+			if btnMenu.Clicked(gtx) {
+				driver.ButtonPress(gotogen.MenuButtonMenu)
+			}
+			if btnUp.Clicked(gtx) {
+				driver.ButtonPress(gotogen.MenuButtonUp)
+			}
+			if btnDown.Clicked(gtx) {
+				driver.ButtonPress(gotogen.MenuButtonDown)
+			}
+
+			if slideX.Update(gtx) {
+				driver.UpdateAccelerometerX(float64(2 * slideX.Value))
+			}
+			if slideY.Update(gtx) {
+				driver.UpdateAccelerometerY(float64(2 * slideY.Value))
+			}
+			if slideZ.Update(gtx) {
+				driver.UpdateAccelerometerZ(float64(2 * slideZ.Value))
+			}
+			if slideBoop.Update(gtx) {
+				driver.UpdateBoop(float64(slideBoop.Value))
+			}
+
+			if chkTalking.Update(gtx) {
+				driver.UpdateTalk(chkTalking.Value)
+			}
+
+			// ////////// draw it
+			dim := func(axis layout.Axis, index, constraint int) int {
+				switch axis {
+				case layout.Vertical:
+					return 50
+				case layout.Horizontal:
+					return 200
+				default:
+					return 0
+				}
+			}
+
+			grid := &outlay.Grid{
+				Horizontal: outlay.AxisPosition{
+					First:     0,
+					Last:      2,
+					Offset:    0,
+					OffsetAbs: 0,
+					Length:    600,
+				},
+				Vertical: outlay.AxisPosition{
+					First:     0,
+					Last:      2,
+					Offset:    0,
+					OffsetAbs: 0,
+					Length:    150,
+				},
+			}
+			grid.Layout(gtx, 3, 3, dim, func(gtx layout.Context, row, col int) layout.Dimensions {
+				if row == 0 && col == 0 {
+					return material.Button(theme, &btnUp, "Up").Layout(gtx)
+				} else if row == 0 && col == 1 {
+					return material.Button(theme, &btnMenu, "Menu").Layout(gtx)
+				} else if row == 0 && col == 2 {
+					return accelSlider(gtx, theme, &slideBoop, "Boop")
+				} else if row == 1 && col == 0 {
+					return material.Button(theme, &btnDown, "Down").Layout(gtx)
+				} else if row == 1 && col == 1 {
+					return material.Button(theme, &btnBack, "Back").Layout(gtx)
+				} else if row == 1 && col == 2 {
+					return material.CheckBox(theme, &chkTalking, "Talking").Layout(gtx)
+				} else if row == 2 && col == 0 {
+					return accelSlider(gtx, theme, &slideX, "X")
+				} else if row == 2 && col == 1 {
+					return accelSlider(gtx, theme, &slideY, "Y")
+				} else if row == 2 && col == 2 {
+					return accelSlider(gtx, theme, &slideZ, "Z")
+				}
+				return layout.Dimensions{}
+			})
+
+			e.Frame(gtx.Ops)
+		}
+	}
+}
+
+func accelSlider(gtx layout.Context, theme *material.Theme, slider *widget.Float, label string) layout.Dimensions {
+	return layout.Flex{
+		Axis:    layout.Horizontal,
+		Spacing: layout.SpaceStart,
+	}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Label(theme, 16, label).Layout(gtx)
+		}),
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			return material.Slider(theme, slider).Layout(gtx)
+		}),
+	)
 }

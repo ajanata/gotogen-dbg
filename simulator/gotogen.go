@@ -7,13 +7,13 @@ import (
 	"github.com/ajanata/textbuf"
 
 	"github.com/ajanata/gotogen"
-
-	"github.com/ajanata/gotogen-simulator/pixbufmatrix"
 )
 
 type Gotogen struct {
-	Face *pixbufmatrix.Matrix
-	Menu *pixbufmatrix.Matrix
+	// Face *pixbufmatrix.Matrix
+	// Menu *pixbufmatrix.Matrix
+	Face *Display
+	Menu *Display
 
 	lock          sync.Mutex
 	pendingButton gotogen.MenuButton
